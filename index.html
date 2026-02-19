@@ -78,8 +78,6 @@
 // URLSearchParams môže zmeniť '+' na ' ' -> vráť späť
 const p = safeDecode((pEnc || '').replace(/ /g, '+'));
     // URLSearchParams už vracia dekódovaný string, ale necháme aj decode fallback
-    const p = safeDecode(pEnc);
-
     const bat = params.get('bat') || '';
     const acc = params.get('acc') || '';
     const ts  = params.get('ts')  || '';
