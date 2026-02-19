@@ -74,7 +74,9 @@
     const params = new URLSearchParams(location.search);
 
     const dev = params.get('device') || 'No device';
-    const pEnc = params.get('p') || '';
+   const pEnc = params.get('p') || '';
+// URLSearchParams môže zmeniť '+' na ' ' -> vráť späť
+const p = safeDecode((pEnc || '').replace(/ /g, '+'));
     // URLSearchParams už vracia dekódovaný string, ale necháme aj decode fallback
     const p = safeDecode(pEnc);
 
