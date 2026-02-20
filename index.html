@@ -11,7 +11,6 @@
   <style>
     html, body { height: 100%; margin: 0; }
     #map { height: 100%; width: 100%; background:#111; }
-
     .panel {
       position: absolute; top: 10px; left: 10px; z-index: 1000;
       background: rgba(255,255,255,0.95);
@@ -21,22 +20,13 @@
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       max-width: calc(100% - 28px);
     }
-
     .title { font-weight: 800; font-size: 15px; margin: 0 0 6px; }
     .row { font-size: 13px; color:#222; margin: 3px 0; }
-    .pill {
-      display:inline-block; padding:2px 8px; border-radius:999px;
-      background:#eee; margin-left:6px; font-size:12px;
-    }
-
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#eee; margin-left:6px; font-size:12px; }
     .btnbar { margin-top: 8px; display:flex; gap:8px; flex-wrap: wrap; }
-    a.btn {
-      display:inline-block; padding:7px 10px; border-radius:10px;
-      background:#6c4cff; color:#fff; text-decoration:none; font-weight:700;
-    }
+    a.btn { display:inline-block; padding:7px 10px; border-radius:10px; background:#6c4cff; color:#fff; text-decoration:none; font-weight:700; }
     a.btn.secondary { background:#222; }
     a.btn:active { transform: translateY(1px); }
-
     .leaflet-bar a { text-decoration:none; }
   </style>
 </head>
@@ -46,17 +36,8 @@
   <div class="panel">
     <div class="title">SeekPoint – Track Viewer</div>
     <div class="row">Device: <span id="dev">—</span></div>
-    <div class="row">Body: <span id="count">0</span>
-      <span class="pill" id="batPill" style="display:none"><span id="batVal"></span>%</span>
-      <span class="pill" id="accPill" style="display:none">±<span id="accVal"></span> m</span>
-    </div>
-    <div class="row" id="endRow" style="display:none">
-      Koniec: <span id="endVal">—</span>
-    </div>
-    <div class="row" id="tsRow" style="display:none">
-      Čas: <span id="tsVal">—</span>
-    </div>
-
+    <div class="row">Body: <span id="count">0</span></div>
+    <div class="row" id="endRow" style="display:none">Koniec: <span id="endVal">—</span></div>
     <div class="btnbar">
       <a class="btn" id="gmaps" target="_blank" rel="noopener" style="display:none">Otvoriť v Google Maps</a>
       <a class="btn secondary" id="center" href="#" style="display:none">Centrovať</a>
@@ -67,42 +48,23 @@
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
   <script>
-    // Params:
-    // p   = polyline (Google encoded), percent-encoded v URL (Android Uri.encode)
-    // lat, lon, alt_m = fallback bod (ak p chýba)
-    // device, bat, ts, acc = meta
     const params = new URLSearchParams(location.search);
 
     const dev = params.get('device') || 'No device';
- const pEnc = params.get('p') || '';
-// ✅ poistka: ak sa '+' niekde zmenil na ' ', vráť naspäť
-const p = (pEnc || '').replace(/ /g, '+');
-    // URLSearchParams už vracia dekódovaný string, ale necháme aj decode fallback
-    const bat = params.get('bat') || '';
-    const acc = params.get('acc') || '';
-    const ts  = params.get('ts')  || '';
-
-    const latFallback = parseFloat(params.get('lat') || '0');
-    const lonFallback = parseFloat(params.get('lon') || '0');
-
     document.getElementById('dev').textContent = dev;
-
-    if (bat) {
-      document.getElementById('batVal').textContent = bat;
-      document.getElementById('batPill').style.display = 'inline-block';
-    }
-    if (acc) {
-      document.getElementById('accVal').textContent = acc;
-      document.getElementById('accPill').style.display = 'inline-block';
-    }
-    if (ts) {
-      document.getElementById('tsVal').textContent = ts;
-      document.getElementById('tsRow').style.display = 'block';
-    }
 
     function safeDecode(s) {
       try { return decodeURIComponent(s); } catch (_) { return s || ''; }
     }
+
+    // ✅ FIX: ak niekde zle enkódovalo '+', URLSearchParams z toho spraví medzeru.
+    // Polyline potrebuje '+' zachovať.
+    const pRawFromUrl = params.get('p') || '';
+    const pFixed = (pRawFromUrl || '').replace(/ /g, '+');
+    const p = safeDecode(pFixed);
+
+    const latFallback = parseFloat(params.get('lat') || '0');
+    const lonFallback = parseFloat(params.get('lon') || '0');
 
     function decodePolyline(encoded) {
       if (!encoded) return [];
@@ -131,13 +93,10 @@ const p = (pEnc || '').replace(/ /g, '+');
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    let endLatLng = null;
     let poly = null;
 
     function setEndUI(lat, lon) {
-      endLatLng = L.latLng(lat, lon);
       const endStr = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-
       document.getElementById('endVal').textContent = endStr;
       document.getElementById('endRow').style.display = 'block';
 
@@ -150,11 +109,10 @@ const p = (pEnc || '').replace(/ /g, '+');
       center.onclick = (e) => {
         e.preventDefault();
         if (poly) map.fitBounds(poly.getBounds(), { padding: [30,30] });
-        else map.setView(endLatLng, 16);
+        else map.setView([lat, lon], 16);
       };
     }
 
-    // Draw
     if (points.length >= 2) {
       const latlngs = points.map(p => L.latLng(p[0], p[1]));
       poly = L.polyline(latlngs, { weight: 5 }).addTo(map);
@@ -170,58 +128,20 @@ const p = (pEnc || '').replace(/ /g, '+');
 
     } else if (points.length === 1) {
       const end = points[0];
-      const ll = L.latLng(end[0], end[1]);
-      map.setView(ll, 16);
-      L.circleMarker(ll, { radius: 7 }).addTo(map).bindPopup('Point');
-      setEndUI(ll.lat, ll.lng);
+      map.setView(end, 16);
+      L.circleMarker(end, { radius: 7 }).addTo(map).bindPopup('Point');
+      setEndUI(end[0], end[1]);
 
     } else if (!Number.isNaN(latFallback) && !Number.isNaN(lonFallback) && latFallback !== 0 && lonFallback !== 0) {
-      const ll = L.latLng(latFallback, lonFallback);
-      map.setView(ll, 16);
-      L.circleMarker(ll, { radius: 7 }).addTo(map).bindPopup('Fallback point');
-      setEndUI(ll.lat, ll.lng);
+      map.setView([latFallback, lonFallback], 16);
+      L.circleMarker([latFallback, lonFallback], { radius: 7 }).addTo(map).bindPopup('Fallback point');
+      setEndUI(latFallback, lonFallback);
 
     } else {
-      // no data
       map.setView([48.15, 17.11], 6);
     }
 
     document.getElementById('count').textContent = String(points.length);
-
-    // Quick locate button
-    (function(){
-      const ctl = L.control({position:'topright'});
-      ctl.onAdd = function () {
-        const div = L.DomUtil.create('div','leaflet-bar');
-        div.style.background = 'white';
-        div.style.padding = '4px';
-        div.style.borderRadius = '8px';
-        div.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
-
-        const locBtn = L.DomUtil.create('a', '', div);
-        locBtn.href = '#'; locBtn.title = 'Moja poloha';
-        locBtn.textContent = '📍';
-        locBtn.style.display = 'inline-block';
-        locBtn.style.padding = '7px';
-
-        L.DomEvent.on(locBtn, 'click', function(e){
-          L.DomEvent.stopPropagation(e); L.DomEvent.preventDefault(e);
-          if (!navigator.geolocation) { alert('Geolokácia nie je podporovaná'); return; }
-          navigator.geolocation.getCurrentPosition(function(pos){
-            const lat = pos.coords.latitude, lng = pos.coords.longitude;
-            if (window._myLocMarker) window._myLocMarker.setLatLng([lat,lng]);
-            else window._myLocMarker = L.circleMarker([lat,lng], { radius:6 }).addTo(map).bindPopup('Ty');
-            map.setView([lat,lng], 15);
-          }, function(err){
-            alert('Neviem získať polohu: ' + (err.message || err.code));
-          }, {enableHighAccuracy:true, timeout:10000});
-        });
-
-        return div;
-      };
-      ctl.addTo(map);
-    })();
   </script>
 </body>
 </html>
-
